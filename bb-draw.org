@@ -1,0 +1,400 @@
+* bb-draw
+#+Title: bb-draw
+#+AUTHOR: adam-james
+#+STARTUP: overview
+#+PROPERTY: header-args :cache yes :noweb yes :results value :mkdirp yes :padline yes :async
+
+This is a small literate program written to show how you can use [[https://babashka.org/][babashka]] directly with Emacs org-mode. This project uses my [[https://github.com/adam-james-v/svg-clj][svg-clj]] library to produce some graphics, but I hope this project can be a useful example for anyone wishing to create literate programming in other contexts. 
+
+In fact, this project was motivated by someone asking in the [[https://clojurians.slack.com/messages][Clojurian's Slack]] about executing Clojure code blocks in an org file using babashka as the backend. My typical workflow uses CIDER to connect a REPL to the buffer, where I send all of my code blocks for evaluation, so I have not actually used babashka in this way before. 
+
+Luckily, [[https://gitlab.com/statonjr/ob-clojurescript][ob-clojurescript]] by Larry Staton Jr. already exists for the identical use case with Lumo as a backend for Clojurescript code blocks.
+
+I quickly made [[https://gist.githubusercontent.com/adam-james-v/f4d2b75a70b095d14a351a1eff96b4b0/raw/ccdf20156e918a449aef970f0fa3e3f12915d164/ob-babashka.el][a gist]] that modifies Larry's code to produce a working ob-babashka.el plugin. This plugin allows evaluation of SRC blocks with 'babashka' as the language. You can do this by using C-c C-c while inside a SRC block.
+
+I hope this little project can serve as a useful example for your own work.
+
+** Current Limitations
+Since this was a very quick edit of ob-clojurescript, I must admit the following limitations of this approach.
+
+- SRC blocks must have 'babashka' as the language, 'bb' shorthand won't work
+- there is no :session functionality. This means any vars in one SRC block will NOT be available in others. There is a workaround that I explain further into the document.
+- CIDER will not recognize 'babashka' SRC blocks and thus will not receive expressions from such code blocks. A REPL connected to the buffer WILL accept expressions if you change the block's language to 'clojure'. I am sure this is solvable, but I don't know how yet.
+
+* Requirements
+There are a few requirements to successfully run this file. All of them should be relatively simple to install, but if there are issues you are welcome to use github's issues system to post questions. I will be happy to help!
+
+Some of these snippets are taken from my [[https://gist.github.com/adam-james-v/7a61612ce0649afc78513f54b337d8c9][mvc.org]] gist, if you want to look through that.
+
+** babashka
+The babashka binary must be installed and available as 'bb' on your system. Babashka is built for Windows, Linux, and Mac OS and is available on many different package managers. Please look to the [[https://babashka.org/][babashka homepage]] for details about how to install bb on your system.
+
+** ob-clojure and clojure-mode
+No evaluation of code actually has to go through Clojure or the JVM, but clojure-mode and ob-clojure are required as ob-babashka derives a major mode from clojure-mode. This is necessary to get syntax highlighting and indentation behaviour inside bb SRC blocks.
+
+I installed clojure-mode and ob-clojure using the MELPA package tool.
+
+** ob-babashka
+[[https://gist.githubusercontent.com/adam-james-v/f4d2b75a70b095d14a351a1eff96b4b0/raw/ccdf20156e918a449aef970f0fa3e3f12915d164/ob-babashka.el][ob-babashka.el]] is my modification of ob-clojurescript that allows org-mode to compile and execute babashak code blocks. At this time, the user will have to manually install the file. It may be acceptable to copy-paste the code into a scratch buffer and eval the buffer for testing purposes. This might be useful if you don't want to commit to having this setup in your dotfiles.
+
+** enabling ob-babashka
+Org-mode needs languages to be explicitly enabled. Here is my dotfiles section for enabling languages. The only one you need for this project is babashak, but it's nice to have a few ready to go.
+
+#+begin_src emacs-lisp :results silent
+(eval-after-load 'org
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((clojure . t)
+     (babashka . t)
+     (clojurescript . t)
+     (emacs-lisp . t)
+     (shell . t))))
+#+end_src
+
+** Fixing > and < bracket problems
+You may find issues with < and >, especially for threading macros. This may no longer be a needed fix, but if you have bracket completion issues, consider trying this to see if it fixes things for you. This is pasted from my dotfiles:
+
+Trying to fix weird org syntax problems. This just lets Org ignore < and > characters as if they were regular words. This is necessary because in Clojure I want to make functions with -> in the name and Org was always insisting on pairing <>. This caused any other paren matching to stop working. It sucked.
+
+#+begin_src emacs-lisp :results silent
+(defun my-angle-bracket-fix ()
+  (modify-syntax-entry ?< "w")
+  (modify-syntax-entry ?> "w"))
+
+(add-hook 'org-mode-hook 'my-angle-bracket-fix)
+#+end_src
+
+** Imagemagick as a display fallback
+Some Emacs builds include SVG rasterization out of the box with librsvg. It may be that your particular install does not have this, however. Emacs should automatically use Imagemagick's 'convert' utility to convert SVG into PNG internally in order to display your images.
+
+That should be all you need for rendering into the org file, but Imagemagick will have slightly better rasterization if Inkscape is also installed. I leave it up to the user to decide how many different programs they actually want to install. I suspect you won't need to though if you have a modern build of Emacs. I have version 27.1 on Mac OS and things are working just fine.
+
+To check your Emacs and org-mode Versions:
+#+begin_src emacs-lisp
+(emacs-version)
+#+end_src
+
+#+RESULTS[0f10950c44f9a66a8754d65237f450dc00a663bd]:
+: GNU Emacs 27.1 (build 1, x86_64-apple-darwin20.3.0, Carbon Version 164 AppKit 2022.3)
+:  of 2021-03-22
+
+#+begin_src emacs-lisp
+(org-version)
+#+end_src
+
+#+RESULTS[d5bfc1701e971ef85f0077fe16c79fe1ca7387e5]:
+: 9.3
+
+** optional config
+Some basic emacs/org-mode configuration may be nice to have. The following code block can be evaluated directly using C-c C-c to enable the configurations that I have in my dotfiles. It is up to you to adapt to your needs, and I will admit that perhaps there are better config options that I have not thought of. Please feel free to explore options, and share them if you feel so inclined.
+
+This project displays SVG graphics inline. Emacs will happily display images once all requirements (see above) are met, but it does not automatically update the images if changes have occurred. This snippet will refresh images after every save and every code block evaluation. This makes for a very helpful feedback loop. It's not a REPL, but it's very nice for graphics work!
+
+#+begin_src emacs-lisp :results silent
+(defun org-mode-refresh-images ()
+  (when (and (string-match-p
+              (regexp-quote ".org") (message "%s" (current-buffer)))
+             (not (string-match-p
+                   (regexp-quote "[") (message "%s" (current-buffer)))))
+    (org-display-inline-images)))
+
+(add-hook 'after-save-hook 'org-mode-refresh-images)
+(add-hook 'org-babel-after-execute-hook 'org-mode-refresh-images)
+#+end_src
+
+Tangling is a feature that unifies your SRC blocks into specified files. Doing this automatically on save has been very useful for my workflow.
+
+#+begin_src emacs-lisp
+(defun tangle-on-save-org-mode-file ()
+  (when (and (string-match-p
+              (regexp-quote ".org") (message "%s" (current-buffer)))
+             (not (string-match-p
+                   (regexp-quote "[") (message "%s" (current-buffer)))))
+    (org-babel-tangle)))
+
+(add-hook 'after-save-hook 'tangle-on-save-org-mode-file)
+#+end_src
+
+* deps
+Babashka can pull deps in right away using the babashka.deps ns. I do this at the top of my script files right under the #! line. Babashka will even handle git deps! This makes it really simple to try out various libraries if you're exploring/tinkering with Clojure.
+
+Since I am using my svg library, I'll need to pull that dependency in. Luckily, Babashka's binary also comes packed with some great libraries built in. For this project, I will use the hiccup compiler to generate the SVG strings, but I don't need to pull that dependecy in because it's already built into babashka! How great is that!?
+
+Side note: Michiel Borkent (aka Borkdude) is very aware that too many built in libraries over time can cause bloat to the babashka binary. Rest assured that he is very careful with deciding what to add in.
+
+#+NAME: deps
+#+begin_src babashka :var deps=deps.edn :results raw
+#!/usr/bin/env bb
+
+(babashka.deps/add-deps
+'{:deps
+ {svg-clj/svg-clj {:git/url "https://github.com/adam-james-v/svg-clj"
+                   :sha "a44a623613b2d8bc59abd54e28215d22aaec2f20"}}})
+
+#+end_src
+ 
+* ns
+Once deps are set up, I declare a namespace pulling in the libraries I'll need. The svg-clj library has quite a few namespaces (at least at this time), and it can be a bit hard to know what you'll need. As I get closer to a good release point, these concerns will be addressed with some careful thinking / reworking of architecture choices and documentation to guide users. Luckily, I wrote the library and know what I need to require.
+
+** A note on 'noweb'
+Noweb is an org-mode (technically org-babel, but let's not get too bogged down) feature that lets you include named SRC blocks in other blocks. It is a direct 'copy-paste' substitution. So, earlier I named the deps SRC block 'deps' and can include it in this 'ns' block with ~<<deps>>~. This is my workaround for lack of sessions.
+
+#+NAME: ns
+#+begin_src babashka :results silent
+<<deps>>
+
+(ns bb.draw
+  (:require [svg-clj.utils :as utils]
+            [svg-clj.elements :as el]
+            [svg-clj.transforms :as tf]
+            [svg-clj.composites :as comp :refer [svg]]
+            [svg-clj.path :as path]
+            [svg-clj.parametric :as p]
+            [svg-clj.layout :as lo]
+            [hiccup.core :refer [html]]
+            [clojure.java.shell :refer [sh]]))
+
+#+end_src
+
+* utils
+As I was writing this project, a few utility functions became necessary. In general, I don't overthink document structure while I am writing out my main program. Instead, I write notes and code as ideas and solutions pop into my brain. As intent and methodology is discovered through iteration, I can then more confidently structure the document. This means both re-arranging code blocks AND adding or removing prose to clarify intent.
+
+This is, in short, a living document. At least up until publish time.
+
+** svg
+Make an SVG function. It turns out that you can natively display SVG in emacs. This lets us export SVG to a file and immediately display it as a code block result. The svg! fn helps with this.
+
+This is a side-effecting function that writes a file to the same directory as this org file. If you want to control where images are saved, you can change this function and/or the fn calls to save into a directory structure of your chosing.
+
+The file name is returned as a symbol so that org-mode correctly inserts an inline image link to that filename. If you return it as a string, org-mode incorrectly has double quotes around the filename, resulting in no display of the image.
+
+#+NAME: svg 
+#+begin_src babashka :results silent
+(defn svg! [svg-data fname]
+  (spit fname (html svg-data))
+  (symbol fname))
+
+#+end_src
+
+** merge-paths
+I have a bug in the svg-clj merge paths implementation. This fn is a simplified copy of the implementation in svg-clj.tranforms/merge-paths. I think the issue arises from the 'clean commands' approach. I am incorrectly discarding some paths that should be kept.
+
+So, this fn works in its place.
+
+#+NAME: merge-paths
+#+begin_src babashka :results silent
+(defn merge-paths
+  "Merges a list of path elements together, keeping props from last path in the list."
+  [& paths]
+  (let [[_ props] (last paths)
+        cmds (mapcat #(path/path-string->commands (get-in % [1 :d])) paths)]
+    [:path (assoc props :d (path/cmds->path-string cmds))]))
+
+#+end_src
+
+** flip-y
+A helper fn that multiplies every pt by [1 -1] to mirror along the y axis.
+
+#+NAME: flip-y
+#+begin_src babashka :results silent
+(defn flip-y
+  [pts]
+  (mapv #(utils/v* % [1 -1]) pts))
+#+end_src
+
+** utils
+Use the 'noweb' features in org-babel to collect the utils codeblocks into one that can be more easily pulled into blocks further down the document. Instead of me having to add a whole list of utils fns, I can bring them all in automatically with ~<<utils>>~ as you'll see in later sections.
+
+#+NAME: utils
+#+begin_src babashka :results silent
+<<svg>>
+<<merge-paths>>
+<<flip-y>>
+#+end_src
+
+* drawing
+Let's draw something. Perhaps a flower? I think flowers are beautiful and have regularity that can be represented nicely with some code. Plus it's just fun to draw flowers.
+
+Notice that I bring in ~<<ns>>~ and ~<<utils>>~ for any SRC block that I want to eval inline. Without those inclusions, this SRC block will fail, since babashka will not see the ns declaration nor the implementations for the util functions. 
+
+If you want to pull defns into their own blocks that you won't execute, you can name the block and avoid any noweb linking.
+
+Naming the block is necessary so that you can include it in SRC blocks that you will eval.
+
+This is the approach I will take with a few drawing functions.
+
+** petals
+I think starting with some petals makes good sense.
+
+#+begin_src babashka :results file
+<<ns>>
+<<utils>>
+
+(def beza (apply path/bezier [[0 0] [5 -50] [50 -20] [75 0]]))
+(def bezb (apply path/bezier [[0 0] [5 50] [50 20] [75 0]]))
+
+(def petal
+  (-> (merge-paths beza bezb)
+      (tf/style {:fill "lavender"
+                 :stroke "slategray"
+                 :stroke-width "2px"})))
+
+(svg! (svg petal) "petal.svg")
+#+end_Src
+
+#+RESULTS[3e7540ea6b8c45c7c88e68f74d258cad5c3c6d6d]:
+[[file:petal.svg]]
+That's a pretty nice result! I think that making a petal function can help me make various petal sizes quickly and easily, which lets me make a more varied flower. So, I'll pull the various ideas from the above snippet into a function.
+
+#+NAME: petal
+#+begin_src babashka :results silent
+(defn petal
+  [cpts]
+  (let [beza (apply path/bezier cpts)
+        bezb (apply path/bezier (flip-y cpts))
+        shape (merge-paths beza bezb)
+        ctr (tf/centroid shape)]
+    (-> shape
+        (tf/rotate -90)
+        (tf/translate (utils/v* ctr [-1 -1])))))
+#+end_src
+
+** blossom
+Now that I can make different petals, I think it's a good idea to make some functions to pattern them around like 'rings'. My library has some helpful distribution functions that let you distribute shape elements along parametric curves.
+
+Using a circle parametric curve, I can quite easily make a helper function that patterns petals.
+
+#+NAME: petal-ring
+#+begin_src babashka :results silent
+(defn petal-ring
+  [petal r n]
+  (el/g
+   (lo/distribute-on-curve
+    (repeat n petal)
+    (p/circle r))))
+#+end_src
+
+At this point, I have all of the ingredients I think I'll need. It's just a matter of experimentation. I'll contextualize the following code block by letting you know that the process to arrive at a decent looking image is very iterative.
+
+Start with one def, render it, change it's colours, size, position, rotation, and repeat. In this phase of work, I allow myself to copy-paste like crazy. Just go and try things out first. Worry about cleaning things up and abstracting into functions once you're sick of copy-paste. But never be ashamed to play around with your code. Never be afraid of deleting stuff that doesn't work, and don't be afraid to fail, that's all part of the fun.
+
+I live this as much as possible, too. I stream this exact sort of thing by the way, if you're interested:
+
+[[twitch.tv/adam_james_tv]]
+
+And have a Youtube Channel where I post nice edited videos:
+
+[[youtube.com/c/AdamJames-tv]]
+
+Ok, that's enough self promotion.
+
+Please, have fun messing around with this code!
+
+#+NAME: blossom
+#+begin_src babashka :results file
+<<ns>>
+<<utils>>
+<<petal>>
+<<petal-ring>>
+
+(def petal-01
+  (-> (petal [[0 0] [5 -50] [50 -20] [75 0]])
+      (tf/style {:fill "#ff8b94"
+                 :stroke "#ffaaa5"
+                 :stroke-width "4px"
+                 :stroke-linecap "round"})))
+
+(def petal-02
+  (-> (petal [[0 0] [1 -20] [20 -10] [40 0]])
+      (tf/style {:fill "#ffaaa5"
+                 :stroke "none"})))
+
+(def petal-03 
+  (-> (merge-paths petal-01 petal-02)
+      (tf/style {:fill "#a8e6cf"})))
+
+(def petal-ring-01 (petal-ring petal-01 120 12))
+(def petal-ring-02 (petal-ring petal-02 120 12))
+
+(def petal-ring-03 
+  (-> (petal-ring petal-03 70 6)
+      (tf/rotate (/ 360.0 24))))
+
+(def petal-ring-04
+  (let [petal (-> petal-03 (tf/style {:fill "#cc5963"}))] 
+    (-> (petal-ring petal 90 6)
+        (tf/rotate (/ 360.0 24))
+        (tf/rotate (/ 360.0 12)))))
+
+(def petal-ring-05
+  (let [petal (-> petal-02
+                  (tf/rotate 180)
+                  (tf/style {:fill "none"
+                             :stroke "#f4f1d7"
+                             :stroke-width "2px"}))] 
+    (-> (petal-ring petal 70 36)
+        (tf/rotate (/ 360.0 24)))))
+
+(def petal-ring-06
+  (let [petal (-> petal-02
+                  (tf/style {:fill "none"
+                             :stroke "#f4f1d7"
+                             :stroke-width "2px"}))] 
+    (-> (petal-ring petal 40 20)
+        (tf/rotate (/ 360.0 24)))))
+
+(def blossom (el/g 
+              (-> (el/circle 105) (tf/style {:fill "#69b599"}))
+              petal-ring-01
+              petal-ring-02
+              petal-ring-06
+              petal-ring-05
+              petal-ring-04
+              petal-ring-03))
+
+;; activate the following s-expr to see your changes after every eval of this block!
+;; have fun :)
+#_(svg! (svg blossom) "blossom.svg")
+
+#+end_src
+
+Putting all of that together, I can generate a blossom image.
+
+#+begin_src babashka :results file
+<<blossom>>
+(svg! (svg blossom) "02.svg")
+#+end_src
+
+#+RESULTS[ff207b655fb2146170589695a89927820f7c58f9]:
+[[file:02.svg]]
+
+** stem
+To end things off, it's possible to make a stem for our lovely flower with another bezier curve.
+
+#+NAME: flower
+#+begin_src babashka :results file
+<<blossom>>
+
+(def stem
+  (-> (path/bezier [0 0] [40 100] [-60 240] [10 400])
+      (tf/style {:fill "none"
+                 :stroke "#49a062"
+                 :stroke-width "24px"})))
+
+(def flower (el/g stem blossom))
+
+(svg! (svg flower) "03.svg")
+#+end_src
+
+#+RESULTS[82be6a4a462ec0499b3b7b5045f60e2263132994]: flower
+[[file:03.svg]]
+
+* Final Thoughts
+Thank you for taking the time to look through and read this project. I hope it was helpful or sparked some ideas in your mind. It's a small project but I think serves as a good example of how nice literate programming with simple tools can be.
+
+Best of luck and feel free to reach out to me if you'd like.
+
+[[https://twitter.com/RustyVermeer][@RustyVermeer]]
+[[https://github.com/adam-james-v/][Github]]
+
+Stay healthy, be well, and have fun!
