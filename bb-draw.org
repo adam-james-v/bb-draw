@@ -2,11 +2,18 @@
 #+Title: bb-draw
 #+AUTHOR: adam-james
 #+STARTUP: overview
-#+PROPERTY: header-args :cache yes :noweb yes :results value :mkdirp yes :padline yes :async
+#+EXCLUDE_TAGS: excl
+#+HTML_DOCTYPE: html5
+#+HTML_HEAD: <script src="https://cdn.jsdelivr.net/gh/borkdude/scittle@0.0.1/js/scittle.js" type="application/javascript"></script>
+#+HTML_HEAD: <script crossorigin src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+#+HTML_HEAD: <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+#+HTML_HEAD: <script src="https://cdn.jsdelivr.net/gh/borkdude/scittle@0.0.1/js/scittle.reagent.js" type="application/javascript"></script>
+#+OPTIONS: toc:2 num:nil html-style:nil html-postamble:nil html-preamble:nil html5-fancy:t
+#+PROPERTY: header-args :cache yes :noweb yes :results value :mkdirp yes :padline yes :async :exports both
 
-This is a small literate program written to show how you can use [[https://babashka.org/][babashka]] directly with Emacs org-mode. This project uses my [[https://github.com/adam-james-v/svg-clj][svg-clj]] library to produce some graphics, but I hope this project can be a useful example for anyone wishing to create literate programming in other contexts. 
+This is a small literate program written to show how you can use [[https://babashka.org/][babashka]] directly with Emacs org-mode. This project uses my [[https://github.com/adam-james-v/svg-clj][svg-clj]] library to produce some graphics, but I hope this project can be a useful example for anyone wishing to create literate programming in other contexts.
 
-In fact, this project was motivated by someone asking in the [[https://clojurians.slack.com/messages][Clojurian's Slack]] about executing Clojure code blocks in an org file using babashka as the backend. My typical workflow uses CIDER to connect a REPL to the buffer, where I send all of my code blocks for evaluation, so I have not actually used babashka in this way before. 
+In fact, this project was motivated by someone asking in the [[https://clojurians.slack.com/messages][Clojurian's Slack]] about executing Clojure code blocks in an org file using babashka as the backend. My typical workflow uses CIDER to connect a REPL to the buffer, where I send all of my code blocks for evaluation, so I have not actually used babashka in this way before.
 
 Luckily, [[https://gitlab.com/statonjr/ob-clojurescript][ob-clojurescript]] by Larry Staton Jr. already exists for the identical use case with Lumo as a backend for Clojurescript code blocks.
 
@@ -123,16 +130,17 @@ Since I am using my svg library, I'll need to pull that dependency in. Luckily, 
 Side note: Michiel Borkent (aka Borkdude) is very aware that too many built in libraries over time can cause bloat to the babashka binary. Rest assured that he is very careful with deciding what to add in.
 
 #+NAME: deps
-#+begin_src babashka :var deps=deps.edn :results raw
+#+begin_src babashka :results raw
 #!/usr/bin/env bb
 
 (babashka.deps/add-deps
 '{:deps
- {svg-clj/svg-clj {:git/url "https://github.com/adam-james-v/svg-clj"
+  {io.github.adam-james-v/svg-clj {:mvn/version "0.0.1-SNAPSHOT"}}
+  #_{svg-clj/svg-clj {:git/url "https://github.com/adam-james-v/svg-clj"
                    :sha "a44a623613b2d8bc59abd54e28215d22aaec2f20"}}})
 
 #+end_src
- 
+
 * ns
 Once deps are set up, I declare a namespace pulling in the libraries I'll need. The svg-clj library has quite a few namespaces (at least at this time), and it can be a bit hard to know what you'll need. As I get closer to a good release point, these concerns will be addressed with some careful thinking / reworking of architecture choices and documentation to guide users. Luckily, I wrote the library and know what I need to require.
 
@@ -168,7 +176,7 @@ This is a side-effecting function that writes a file to the same directory as th
 
 The file name is returned as a symbol so that org-mode correctly inserts an inline image link to that filename. If you return it as a string, org-mode incorrectly has double quotes around the filename, resulting in no display of the image.
 
-#+NAME: svg 
+#+NAME: svg
 #+begin_src babashka :results silent
 (defn svg! [svg-data fname]
   (spit fname (html svg-data))
@@ -215,7 +223,7 @@ Use the 'noweb' features in org-babel to collect the utils codeblocks into one t
 * drawing
 Let's draw something. Perhaps a flower? I think flowers are beautiful and have regularity that can be represented nicely with some code. Plus it's just fun to draw flowers.
 
-Notice that I bring in ~<<ns>>~ and ~<<utils>>~ for any SRC block that I want to eval inline. Without those inclusions, this SRC block will fail, since babashka will not see the ns declaration nor the implementations for the util functions. 
+Notice that I bring in ~<<ns>>~ and ~<<utils>>~ for any SRC block that I want to eval inline. Without those inclusions, this SRC block will fail, since babashka will not see the ns declaration nor the implementations for the util functions.
 
 If you want to pull defns into their own blocks that you won't execute, you can name the block and avoid any noweb linking.
 
@@ -234,17 +242,16 @@ I think starting with some petals makes good sense.
 (def bezb (apply path/bezier [[0 0] [5 50] [50 20] [75 0]]))
 
 (def petal
-  (-> (merge-paths beza bezb)
+  (-> (tf/merge-paths beza bezb)
       (tf/style {:fill "lavender"
                  :stroke "slategray"
                  :stroke-width "2px"})))
 
 (svg! (svg petal) "petal.svg")
-#+end_Src
+#+end_src
 
-#+RESULTS[3e7540ea6b8c45c7c88e68f74d258cad5c3c6d6d]:
+#+RESULTS[0960cfe3ac4ce68343b555b18d00c7f059672d2f]:
 [[file:petal.svg]]
-That's a pretty nice result! I think that making a petal function can help me make various petal sizes quickly and easily, which lets me make a more varied flower. So, I'll pull the various ideas from the above snippet into a function.
 
 #+NAME: petal
 #+begin_src babashka :results silent
@@ -280,15 +287,13 @@ Start with one def, render it, change it's colours, size, position, rotation, an
 
 I live this as much as possible, too. I stream this exact sort of thing by the way, if you're interested:
 
-[[twitch.tv/adam_james_tv]]
+[[https://www.twitch.tv/adam_james_tv]]
 
 And have a Youtube Channel where I post nice edited videos:
 
-[[youtube.com/c/AdamJames-tv]]
+[[https://www.youtube.com/c/AdamJames-tv]]
 
-Ok, that's enough self promotion.
-
-Please, have fun messing around with this code!
+Ok, that's enough self promotion. Please, have fun messing around with this code!
 
 #+NAME: blossom
 #+begin_src babashka :results file
@@ -309,19 +314,19 @@ Please, have fun messing around with this code!
       (tf/style {:fill "#ffaaa5"
                  :stroke "none"})))
 
-(def petal-03 
+(def petal-03
   (-> (merge-paths petal-01 petal-02)
       (tf/style {:fill "#a8e6cf"})))
 
 (def petal-ring-01 (petal-ring petal-01 120 12))
 (def petal-ring-02 (petal-ring petal-02 120 12))
 
-(def petal-ring-03 
+(def petal-ring-03
   (-> (petal-ring petal-03 70 6)
       (tf/rotate (/ 360.0 24))))
 
 (def petal-ring-04
-  (let [petal (-> petal-03 (tf/style {:fill "#cc5963"}))] 
+  (let [petal (-> petal-03 (tf/style {:fill "#cc5963"}))]
     (-> (petal-ring petal 90 6)
         (tf/rotate (/ 360.0 24))
         (tf/rotate (/ 360.0 12)))))
@@ -331,7 +336,7 @@ Please, have fun messing around with this code!
                   (tf/rotate 180)
                   (tf/style {:fill "none"
                              :stroke "#f4f1d7"
-                             :stroke-width "2px"}))] 
+                             :stroke-width "2px"}))]
     (-> (petal-ring petal 70 36)
         (tf/rotate (/ 360.0 24)))))
 
@@ -339,11 +344,11 @@ Please, have fun messing around with this code!
   (let [petal (-> petal-02
                   (tf/style {:fill "none"
                              :stroke "#f4f1d7"
-                             :stroke-width "2px"}))] 
+                             :stroke-width "2px"}))]
     (-> (petal-ring petal 40 20)
         (tf/rotate (/ 360.0 24)))))
 
-(def blossom (el/g 
+(def blossom (el/g
               (-> (el/circle 105) (tf/style {:fill "#69b599"}))
               petal-ring-01
               petal-ring-02
@@ -354,9 +359,11 @@ Please, have fun messing around with this code!
 
 ;; activate the following s-expr to see your changes after every eval of this block!
 ;; have fun :)
-#_(svg! (svg blossom) "blossom.svg")
-
+(svg! (svg blossom) "blossom.svg")
 #+end_src
+
+#+RESULTS[d02fef6be3e422dcd54991d6a0b51977bf5ce9fb]: blossom
+[[file:blossom.svg]]
 
 Putting all of that together, I can generate a blossom image.
 
@@ -365,7 +372,7 @@ Putting all of that together, I can generate a blossom image.
 (svg! (svg blossom) "02.svg")
 #+end_src
 
-#+RESULTS[ff207b655fb2146170589695a89927820f7c58f9]:
+#+RESULTS[f1b0c0723c31a95eef23c9cae4f4156dabf4ee77]:
 [[file:02.svg]]
 
 ** stem
@@ -386,7 +393,7 @@ To end things off, it's possible to make a stem for our lovely flower with anoth
 (svg! (svg flower) "03.svg")
 #+end_src
 
-#+RESULTS[82be6a4a462ec0499b3b7b5045f60e2263132994]: flower
+#+RESULTS[3acd4ff5efc612642de81a63c0b9d08f5d365be4]: flower
 [[file:03.svg]]
 
 * Final Thoughts

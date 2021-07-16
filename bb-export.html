@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2021-07-04 Sun 14:03 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bb-export</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="adam-james">
+<script src="https://cdn.jsdelivr.net/gh/borkdude/scittle@0.0.2/js/scittle.js" type="application/javascript"></script>
+<script crossorigin src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/borkdude/scittle@0.0.2/js/scittle.reagent.js" type="application/javascript"></script>
+<script src="myscript.clj"type="application/x-scittle"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/codemirror.min.js" type="application/javascript"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/clojure.js" type="application/javascript"></script>
+<link rel="stylesheet"href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/codemirror.min.css"></link>
+<link rel="stylesheet"href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/theme/nord.min.css">
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<header>
+<h1 class="title">bb-export</h1>
+</header><div id="outline-container-org354e109" class="outline-2">
+<h2 id="org354e109">bb-export</h2>
+<div class="outline-text-2" id="text-org354e109">
+<p>
+This is a test page for org-exports using Babashka and the Scittle scripts.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org589e7bb" class="outline-2">
+<h2 id="org589e7bb">Hello asdf</h2>
+<div class="outline-text-2" id="text-org589e7bb">
+<p>
+This is text.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka">(defn asdf []
+  [:div {:style {:color "blue"}} "this is eval'd in browser"])
+
+(asdf)
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org1e21b85" class="outline-2">
+<h2 id="org1e21b85">Goodbye asdf</h2>
+<div class="outline-text-2" id="text-org1e21b85">
+<p>
+asdf
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka">#_(/ 2 3 233)
+
+(try
+  (/ 1 0)
+  (catch :default e
+    (str e)))
+
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org6ddc904" class="outline-2">
+<h2 id="org6ddc904">app</h2>
+<div class="outline-text-2" id="text-org6ddc904">
+<div id="app"></div>
+</div>
+</div>
+</div>
+</body>
+</html>

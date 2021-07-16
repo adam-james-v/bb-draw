@@ -1,0 +1,68 @@
+* bb-export
+#+Title: bb-export
+#+AUTHOR: adam-james
+#+STARTUP: overview
+#+EXCLUDE_TAGS: excl
+#+HTML_DOCTYPE: html5
+#+HTML_HEAD: <script src="https://cdn.jsdelivr.net/gh/borkdude/scittle@0.0.2/js/scittle.js" type="application/javascript"></script>
+#+HTML_HEAD: <script crossorigin src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+#+HTML_HEAD: <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+#+HTML_HEAD: <script src="https://cdn.jsdelivr.net/gh/borkdude/scittle@0.0.2/js/scittle.reagent.js" type="application/javascript"></script>
+#+HTML_HEAD: <script src="myscript.clj"type="application/x-scittle"></script>
+#+HTML_HEAD: <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/codemirror.min.js" type="application/javascript"></script>
+#+HTML_HEAD: <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/mode/clojure.js" type="application/javascript"></script>
+#+HTML_HEAD: <link rel="stylesheet"href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/codemirror.min.css"></link>
+#+HTML_HEAD: <link rel="stylesheet"href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.2/theme/nord.min.css">
+#+OPTIONS: toc:nil num:nil html-style:nil html-postamble:nil html-preamble:nil html5-fancy:t
+#+PROPERTY: header-args :cache yes :noweb yes :results value :mkdirp yes :padline yes :async
+
+This is a test page for org-exports using Babashka and the Scittle scripts.
+
+* scittle-script :excl:
+This is where I make scittle fns.
+
+NOTES:
+
+- babashka src blocks have string escaping on tangle that mess up running scripts. For example "string" is tangled as \"string\" when I want it to just be "string"
+- to add html elements directly into the export, you can use begin_export blocks. This can be used to embed 'app' divs or similar.
+
+Turning textareas into code editors is necessary. Potential tools for doing this:
+- codemirror (Klipse uses this, and could be good to explore)
+- https://nextjournal.github.io/clojure-mode/#use-it
+
+- remember to file a bug on scittle about js/Error class not found
+
+
+#+begin_src babashka :results silent tangle myscript.clj
+;; insert working script
+
+#+end_src
+
+* Hello asdf
+This is text.
+
+#+begin_src babashka :results silent
+(defn asdf []
+  [:div {:style {:color "blue"}} "this is eval'd in browser"])
+
+(asdf)
+#+end_src
+
+* Goodbye asdf
+asdf
+
+#+begin_src babashka :results silent
+#_(/ 2 3 233)
+
+(try
+  (/ 1 0)
+  (catch :default e
+    (str e)))
+
+#+end_src
+
+* app
+  
+#+begin_export html
+<div id="app"></div>
+#+end_export

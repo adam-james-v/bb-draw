@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 2021-07-01 Thu 14:20 -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bb-draw</title>
+<meta name="generator" content="Org mode">
+<meta name="author" content="adam-james">
+<script src="https://cdn.jsdelivr.net/gh/borkdude/scittle@0.0.1/js/scittle.js" type="application/javascript"></script>
+<script crossorigin src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/borkdude/scittle@0.0.1/js/scittle.reagent.js" type="application/javascript"></script>
+<script type="text/javascript">
+// @license magnet:?xt=urn:btih:e95b018ef3580986a04669f1b5879592219e2a7a&dn=public-domain.txt Public Domain
+<!--/*--><![CDATA[/*><!--*/
+     function CodeHighlightOn(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.add("code-highlighted");
+         target.classList.add("code-highlighted");
+       }
+     }
+     function CodeHighlightOff(elem, id)
+     {
+       var target = document.getElementById(id);
+       if(null != target) {
+         elem.classList.remove("code-highlighted");
+         target.classList.remove("code-highlighted");
+       }
+     }
+    /*]]>*///-->
+// @license-end
+</script>
+</head>
+<body>
+<div id="content">
+<header>
+<h1 class="title">bb-draw</h1>
+</header><nav id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#org5b38133">bb-draw</a>
+<ul>
+<li><a href="#org77b5db6">Current Limitations</a></li>
+</ul>
+</li>
+<li><a href="#org8862b1d">Requirements</a>
+<ul>
+<li><a href="#orgfec4437">babashka</a></li>
+<li><a href="#orge1c16d6">ob-clojure and clojure-mode</a></li>
+<li><a href="#org1a26deb">ob-babashka</a></li>
+<li><a href="#orgad44b72">enabling ob-babashka</a></li>
+<li><a href="#orgbd0904d">Fixing &gt; and &lt; bracket problems</a></li>
+<li><a href="#org2ba404d">Imagemagick as a display fallback</a></li>
+<li><a href="#org3b260b2">optional config</a></li>
+</ul>
+</li>
+<li><a href="#org97ca90c">deps</a></li>
+<li><a href="#org45ae4bb">ns</a>
+<ul>
+<li><a href="#org8fec569">A note on 'noweb'</a></li>
+</ul>
+</li>
+<li><a href="#org01d20a0">utils</a>
+<ul>
+<li><a href="#org08dadbf">svg</a></li>
+<li><a href="#org0668d6c">merge-paths</a></li>
+<li><a href="#org702b951">flip-y</a></li>
+<li><a href="#org87d564c">utils</a></li>
+</ul>
+</li>
+<li><a href="#orge33e1fe">drawing</a>
+<ul>
+<li><a href="#org7e15164">petals</a></li>
+<li><a href="#orgf493dcc">blossom</a></li>
+<li><a href="#org20c6774">stem</a></li>
+</ul>
+</li>
+<li><a href="#orgb6c4304">Final Thoughts</a></li>
+</ul>
+</div>
+</nav>
+<div id="outline-container-org5b38133" class="outline-2">
+<h2 id="org5b38133">bb-draw</h2>
+<div class="outline-text-2" id="text-org5b38133">
+<p>
+This is a small literate program written to show how you can use <a href="https://babashka.org/">babashka</a> directly with Emacs org-mode. This project uses my <a href="https://github.com/adam-james-v/svg-clj">svg-clj</a> library to produce some graphics, but I hope this project can be a useful example for anyone wishing to create literate programming in other contexts.
+</p>
+
+<p>
+In fact, this project was motivated by someone asking in the <a href="https://clojurians.slack.com/messages">Clojurian's Slack</a> about executing Clojure code blocks in an org file using babashka as the backend. My typical workflow uses CIDER to connect a REPL to the buffer, where I send all of my code blocks for evaluation, so I have not actually used babashka in this way before.
+</p>
+
+<p>
+Luckily, <a href="https://gitlab.com/statonjr/ob-clojurescript">ob-clojurescript</a> by Larry Staton Jr. already exists for the identical use case with Lumo as a backend for Clojurescript code blocks.
+</p>
+
+<p>
+I quickly made <a href="https://gist.githubusercontent.com/adam-james-v/f4d2b75a70b095d14a351a1eff96b4b0/raw/ccdf20156e918a449aef970f0fa3e3f12915d164/ob-babashka.el">a gist</a> that modifies Larry's code to produce a working ob-babashka.el plugin. This plugin allows evaluation of SRC blocks with 'babashka' as the language. You can do this by using C-c C-c while inside a SRC block.
+</p>
+
+<p>
+I hope this little project can serve as a useful example for your own work.
+</p>
+</div>
+
+<div id="outline-container-org77b5db6" class="outline-3">
+<h3 id="org77b5db6">Current Limitations</h3>
+<div class="outline-text-3" id="text-org77b5db6">
+<p>
+Since this was a very quick edit of ob-clojurescript, I must admit the following limitations of this approach.
+</p>
+
+<ul class="org-ul">
+<li>SRC blocks must have 'babashka' as the language, 'bb' shorthand won't work</li>
+<li>there is no :session functionality. This means any vars in one SRC block will NOT be available in others. There is a workaround that I explain further into the document.</li>
+<li>CIDER will not recognize 'babashka' SRC blocks and thus will not receive expressions from such code blocks. A REPL connected to the buffer WILL accept expressions if you change the block's language to 'clojure'. I am sure this is solvable, but I don't know how yet.</li>
+</ul>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org8862b1d" class="outline-2">
+<h2 id="org8862b1d">Requirements</h2>
+<div class="outline-text-2" id="text-org8862b1d">
+<p>
+There are a few requirements to successfully run this file. All of them should be relatively simple to install, but if there are issues you are welcome to use github's issues system to post questions. I will be happy to help!
+</p>
+
+<p>
+Some of these snippets are taken from my <a href="https://gist.github.com/adam-james-v/7a61612ce0649afc78513f54b337d8c9">mvc.org</a> gist, if you want to look through that.
+</p>
+</div>
+
+<div id="outline-container-orgfec4437" class="outline-3">
+<h3 id="orgfec4437">babashka</h3>
+<div class="outline-text-3" id="text-orgfec4437">
+<p>
+The babashka binary must be installed and available as 'bb' on your system. Babashka is built for Windows, Linux, and Mac OS and is available on many different package managers. Please look to the <a href="https://babashka.org/">babashka homepage</a> for details about how to install bb on your system.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orge1c16d6" class="outline-3">
+<h3 id="orge1c16d6">ob-clojure and clojure-mode</h3>
+<div class="outline-text-3" id="text-orge1c16d6">
+<p>
+No evaluation of code actually has to go through Clojure or the JVM, but clojure-mode and ob-clojure are required as ob-babashka derives a major mode from clojure-mode. This is necessary to get syntax highlighting and indentation behaviour inside bb SRC blocks.
+</p>
+
+<p>
+I installed clojure-mode and ob-clojure using the MELPA package tool.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org1a26deb" class="outline-3">
+<h3 id="org1a26deb">ob-babashka</h3>
+<div class="outline-text-3" id="text-org1a26deb">
+<p>
+<a href="https://gist.githubusercontent.com/adam-james-v/f4d2b75a70b095d14a351a1eff96b4b0/raw/ccdf20156e918a449aef970f0fa3e3f12915d164/ob-babashka.el">ob-babashka.el</a> is my modification of ob-clojurescript that allows org-mode to compile and execute babashak code blocks. At this time, the user will have to manually install the file. It may be acceptable to copy-paste the code into a scratch buffer and eval the buffer for testing purposes. This might be useful if you don't want to commit to having this setup in your dotfiles.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgad44b72" class="outline-3">
+<h3 id="orgad44b72">enabling ob-babashka</h3>
+<div class="outline-text-3" id="text-orgad44b72">
+<p>
+Org-mode needs languages to be explicitly enabled. Here is my dotfiles section for enabling languages. The only one you need for this project is babashak, but it's nice to have a few ready to go.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(eval-after-load 'org
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((clojure . t)
+     (babashka . t)
+     (clojurescript . t)
+     (emacs-lisp . t)
+     (shell . t))))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgbd0904d" class="outline-3">
+<h3 id="orgbd0904d">Fixing &gt; and &lt; bracket problems</h3>
+<div class="outline-text-3" id="text-orgbd0904d">
+<p>
+You may find issues with &lt; and &gt;, especially for threading macros. This may no longer be a needed fix, but if you have bracket completion issues, consider trying this to see if it fixes things for you. This is pasted from my dotfiles:
+</p>
+
+<p>
+Trying to fix weird org syntax problems. This just lets Org ignore &lt; and &gt; characters as if they were regular words. This is necessary because in Clojure I want to make functions with -&gt; in the name and Org was always insisting on pairing &lt;&gt;. This caused any other paren matching to stop working. It sucked.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(defun my-angle-bracket-fix ()
+  (modify-syntax-entry ?&lt; "w")
+  (modify-syntax-entry ?&gt; "w"))
+
+(add-hook 'org-mode-hook 'my-angle-bracket-fix)
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2ba404d" class="outline-3">
+<h3 id="org2ba404d">Imagemagick as a display fallback</h3>
+<div class="outline-text-3" id="text-org2ba404d">
+<p>
+Some Emacs builds include SVG rasterization out of the box with librsvg. It may be that your particular install does not have this, however. Emacs should automatically use Imagemagick's 'convert' utility to convert SVG into PNG internally in order to display your images.
+</p>
+
+<p>
+That should be all you need for rendering into the org file, but Imagemagick will have slightly better rasterization if Inkscape is also installed. I leave it up to the user to decide how many different programs they actually want to install. I suspect you won't need to though if you have a modern build of Emacs. I have version 27.1 on Mac OS and things are working just fine.
+</p>
+
+<p>
+To check your Emacs and org-mode Versions:
+</p>
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(emacs-version)
+</pre>
+</div>
+
+<pre class="example">
+GNU Emacs 28.0.50 (build 1, x86_64-apple-darwin20.4.0, NS appkit-2022.44 Version 11.3.1 (Build 20E241))
+ of 2021-06-30
+</pre>
+
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(org-version)
+</pre>
+</div>
+
+<pre class="example">
+9.4.4
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org3b260b2" class="outline-3">
+<h3 id="org3b260b2">optional config</h3>
+<div class="outline-text-3" id="text-org3b260b2">
+<p>
+Some basic emacs/org-mode configuration may be nice to have. The following code block can be evaluated directly using C-c C-c to enable the configurations that I have in my dotfiles. It is up to you to adapt to your needs, and I will admit that perhaps there are better config options that I have not thought of. Please feel free to explore options, and share them if you feel so inclined.
+</p>
+
+<p>
+This project displays SVG graphics inline. Emacs will happily display images once all requirements (see above) are met, but it does not automatically update the images if changes have occurred. This snippet will refresh images after every save and every code block evaluation. This makes for a very helpful feedback loop. It's not a REPL, but it's very nice for graphics work!
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(defun org-mode-refresh-images ()
+  (when (and (string-match-p
+              (regexp-quote ".org") (message "%s" (current-buffer)))
+             (not (string-match-p
+                   (regexp-quote "[") (message "%s" (current-buffer)))))
+    (org-display-inline-images)))
+
+(add-hook 'after-save-hook 'org-mode-refresh-images)
+(add-hook 'org-babel-after-execute-hook 'org-mode-refresh-images)
+</pre>
+</div>
+
+<p>
+Tangling is a feature that unifies your SRC blocks into specified files. Doing this automatically on save has been very useful for my workflow.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-emacs-lisp">(defun tangle-on-save-org-mode-file ()
+  (when (and (string-match-p
+              (regexp-quote ".org") (message "%s" (current-buffer)))
+             (not (string-match-p
+                   (regexp-quote "[") (message "%s" (current-buffer)))))
+    (org-babel-tangle)))
+
+(add-hook 'after-save-hook 'tangle-on-save-org-mode-file)
+</pre>
+</div>
+
+<table>
+
+
+<colgroup>
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+
+<col  class="org-left">
+</colgroup>
+<tbody>
+<tr>
+<td class="org-left">org-mode-refresh-images</td>
+<td class="org-left">rmail-after-save-hook</td>
+<td class="org-left">revert-all-buffers</td>
+<td class="org-left">display-images-on-save-org-mode-file</td>
+<td class="org-left">to-agenda-on-save-org-mode-file</td>
+<td class="org-left">tangle-on-save-org-mode-file</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org97ca90c" class="outline-2">
+<h2 id="org97ca90c">deps</h2>
+<div class="outline-text-2" id="text-org97ca90c">
+<p>
+Babashka can pull deps in right away using the babashka.deps ns. I do this at the top of my script files right under the #! line. Babashka will even handle git deps! This makes it really simple to try out various libraries if you're exploring/tinkering with Clojure.
+</p>
+
+<p>
+Since I am using my svg library, I'll need to pull that dependency in. Luckily, Babashka's binary also comes packed with some great libraries built in. For this project, I will use the hiccup compiler to generate the SVG strings, but I don't need to pull that dependecy in because it's already built into babashka! How great is that!?
+</p>
+
+<p>
+Side note: Michiel Borkent (aka Borkdude) is very aware that too many built in libraries over time can cause bloat to the babashka binary. Rest assured that he is very careful with deciding what to add in.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka" id="org73af1c0">#!/usr/bin/env bb
+
+(babashka.deps/add-deps
+'{:deps
+ {svg-clj/svg-clj {:git/url "https://github.com/adam-james-v/svg-clj"
+                   :sha "a44a623613b2d8bc59abd54e28215d22aaec2f20"}}})
+
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org45ae4bb" class="outline-2">
+<h2 id="org45ae4bb">ns</h2>
+<div class="outline-text-2" id="text-org45ae4bb">
+<p>
+Once deps are set up, I declare a namespace pulling in the libraries I'll need. The svg-clj library has quite a few namespaces (at least at this time), and it can be a bit hard to know what you'll need. As I get closer to a good release point, these concerns will be addressed with some careful thinking / reworking of architecture choices and documentation to guide users. Luckily, I wrote the library and know what I need to require.
+</p>
+</div>
+
+<div id="outline-container-org8fec569" class="outline-3">
+<h3 id="org8fec569">A note on 'noweb'</h3>
+<div class="outline-text-3" id="text-org8fec569">
+<p>
+Noweb is an org-mode (technically org-babel, but let's not get too bogged down) feature that lets you include named SRC blocks in other blocks. It is a direct 'copy-paste' substitution. So, earlier I named the deps SRC block 'deps' and can include it in this 'ns' block with <code>&lt;&lt;deps&gt;&gt;</code>. This is my workaround for lack of sessions.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka" id="org12cca70">#!/usr/bin/env bb
+
+(babashka.deps/add-deps
+'{:deps
+ {svg-clj/svg-clj {:git/url "https://github.com/adam-james-v/svg-clj"
+                   :sha "a44a623613b2d8bc59abd54e28215d22aaec2f20"}}})
+
+
+(ns bb.draw
+  (:require [svg-clj.utils :as utils]
+            [svg-clj.elements :as el]
+            [svg-clj.transforms :as tf]
+            [svg-clj.composites :as comp :refer [svg]]
+            [svg-clj.path :as path]
+            [svg-clj.parametric :as p]
+            [svg-clj.layout :as lo]
+            [hiccup.core :refer [html]]
+            [clojure.java.shell :refer [sh]]))
+
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org01d20a0" class="outline-2">
+<h2 id="org01d20a0">utils</h2>
+<div class="outline-text-2" id="text-org01d20a0">
+<p>
+As I was writing this project, a few utility functions became necessary. In general, I don't overthink document structure while I am writing out my main program. Instead, I write notes and code as ideas and solutions pop into my brain. As intent and methodology is discovered through iteration, I can then more confidently structure the document. This means both re-arranging code blocks AND adding or removing prose to clarify intent.
+</p>
+
+<p>
+This is, in short, a living document. At least up until publish time.
+</p>
+</div>
+
+<div id="outline-container-org08dadbf" class="outline-3">
+<h3 id="org08dadbf">svg</h3>
+<div class="outline-text-3" id="text-org08dadbf">
+<p>
+Make an SVG function. It turns out that you can natively display SVG in emacs. This lets us export SVG to a file and immediately display it as a code block result. The svg! fn helps with this.
+</p>
+
+<p>
+This is a side-effecting function that writes a file to the same directory as this org file. If you want to control where images are saved, you can change this function and/or the fn calls to save into a directory structure of your chosing.
+</p>
+
+<p>
+The file name is returned as a symbol so that org-mode correctly inserts an inline image link to that filename. If you return it as a string, org-mode incorrectly has double quotes around the filename, resulting in no display of the image.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka" id="org82ed1f9">(defn svg! [svg-data fname]
+  (spit fname (html svg-data))
+  (symbol fname))
+
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org0668d6c" class="outline-3">
+<h3 id="org0668d6c">merge-paths</h3>
+<div class="outline-text-3" id="text-org0668d6c">
+<p>
+I have a bug in the svg-clj merge paths implementation. This fn is a simplified copy of the implementation in svg-clj.tranforms/merge-paths. I think the issue arises from the 'clean commands' approach. I am incorrectly discarding some paths that should be kept.
+</p>
+
+<p>
+So, this fn works in its place.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka" id="org05a877b">(defn merge-paths
+  "Merges a list of path elements together, keeping props from last path in the list."
+  [&amp; paths]
+  (let [[_ props] (last paths)
+        cmds (mapcat #(path/path-string-&gt;commands (get-in % [1 :d])) paths)]
+    [:path (assoc props :d (path/cmds-&gt;path-string cmds))]))
+
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org702b951" class="outline-3">
+<h3 id="org702b951">flip-y</h3>
+<div class="outline-text-3" id="text-org702b951">
+<p>
+A helper fn that multiplies every pt by [1 -1] to mirror along the y axis.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka" id="orgac49eef">(defn flip-y
+  [pts]
+  (mapv #(utils/v* % [1 -1]) pts))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org87d564c" class="outline-3">
+<h3 id="org87d564c">utils</h3>
+<div class="outline-text-3" id="text-org87d564c">
+<p>
+Use the 'noweb' features in org-babel to collect the utils codeblocks into one that can be more easily pulled into blocks further down the document. Instead of me having to add a whole list of utils fns, I can bring them all in automatically with <code>&lt;&lt;utils&gt;&gt;</code> as you'll see in later sections.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka" id="org59e3078">(defn svg! [svg-data fname]
+  (spit fname (html svg-data))
+  (symbol fname))
+
+(defn merge-paths
+  "Merges a list of path elements together, keeping props from last path in the list."
+  [&amp; paths]
+  (let [[_ props] (last paths)
+        cmds (mapcat #(path/path-string-&gt;commands (get-in % [1 :d])) paths)]
+    [:path (assoc props :d (path/cmds-&gt;path-string cmds))]))
+
+(defn flip-y
+  [pts]
+  (mapv #(utils/v* % [1 -1]) pts))
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orge33e1fe" class="outline-2">
+<h2 id="orge33e1fe">drawing</h2>
+<div class="outline-text-2" id="text-orge33e1fe">
+<p>
+Let's draw something. Perhaps a flower? I think flowers are beautiful and have regularity that can be represented nicely with some code. Plus it's just fun to draw flowers.
+</p>
+
+<p>
+Notice that I bring in <code>&lt;&lt;ns&gt;&gt;</code> and <code>&lt;&lt;utils&gt;&gt;</code> for any SRC block that I want to eval inline. Without those inclusions, this SRC block will fail, since babashka will not see the ns declaration nor the implementations for the util functions.
+</p>
+
+<p>
+If you want to pull defns into their own blocks that you won't execute, you can name the block and avoid any noweb linking.
+</p>
+
+<p>
+Naming the block is necessary so that you can include it in SRC blocks that you will eval.
+</p>
+
+<p>
+This is the approach I will take with a few drawing functions.
+</p>
+</div>
+
+<div id="outline-container-org7e15164" class="outline-3">
+<h3 id="org7e15164">petals</h3>
+<div class="outline-text-3" id="text-org7e15164">
+<p>
+I think starting with some petals makes good sense.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka">#!/usr/bin/env bb
+
+(babashka.deps/add-deps
+'{:deps
+ {svg-clj/svg-clj {:git/url "https://github.com/adam-james-v/svg-clj"
+                   :sha "a44a623613b2d8bc59abd54e28215d22aaec2f20"}}})
+
+
+(ns bb.draw
+  (:require [svg-clj.utils :as utils]
+            [svg-clj.elements :as el]
+            [svg-clj.transforms :as tf]
+            [svg-clj.composites :as comp :refer [svg]]
+            [svg-clj.path :as path]
+            [svg-clj.parametric :as p]
+            [svg-clj.layout :as lo]
+            [hiccup.core :refer [html]]
+            [clojure.java.shell :refer [sh]]))
+
+(defn svg! [svg-data fname]
+  (spit fname (html svg-data))
+  (symbol fname))
+
+(defn merge-paths
+  "Merges a list of path elements together, keeping props from last path in the list."
+  [&amp; paths]
+  (let [[_ props] (last paths)
+        cmds (mapcat #(path/path-string-&gt;commands (get-in % [1 :d])) paths)]
+    [:path (assoc props :d (path/cmds-&gt;path-string cmds))]))
+
+(defn flip-y
+  [pts]
+  (mapv #(utils/v* % [1 -1]) pts))
+
+(def beza (apply path/bezier [[0 0] [5 -50] [50 -20] [75 0]]))
+(def bezb (apply path/bezier [[0 0] [5 50] [50 20] [75 0]]))
+
+(def petal
+  (-&gt; (merge-paths beza bezb)
+      (tf/style {:fill "lavender"
+                 :stroke "slategray"
+                 :stroke-width "2px"})))
+
+(svg! (svg petal) "petal.svg")
+</pre>
+</div>
+
+
+<figure id="orgeb09c0f">
+<object type="image/svg+xml" data="petal.svg" class="org-svg">
+Sorry, your browser does not support SVG.</object>
+
+</figure>
+
+<div class="org-src-container">
+<pre class="src src-babashka" id="orgc20aaac">(defn petal
+  [cpts]
+  (let [beza (apply path/bezier cpts)
+        bezb (apply path/bezier (flip-y cpts))
+        shape (merge-paths beza bezb)
+        ctr (tf/centroid shape)]
+    (-&gt; shape
+        (tf/rotate -90)
+        (tf/translate (utils/v* ctr [-1 -1])))))
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgf493dcc" class="outline-3">
+<h3 id="orgf493dcc">blossom</h3>
+<div class="outline-text-3" id="text-orgf493dcc">
+<p>
+Now that I can make different petals, I think it's a good idea to make some functions to pattern them around like 'rings'. My library has some helpful distribution functions that let you distribute shape elements along parametric curves.
+</p>
+
+<p>
+Using a circle parametric curve, I can quite easily make a helper function that patterns petals.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka" id="orgcbe7290">(defn petal-ring
+  [petal r n]
+  (el/g
+   (lo/distribute-on-curve
+    (repeat n petal)
+    (p/circle r))))
+</pre>
+</div>
+
+<p>
+At this point, I have all of the ingredients I think I'll need. It's just a matter of experimentation. I'll contextualize the following code block by letting you know that the process to arrive at a decent looking image is very iterative.
+</p>
+
+<p>
+Start with one def, render it, change it's colours, size, position, rotation, and repeat. In this phase of work, I allow myself to copy-paste like crazy. Just go and try things out first. Worry about cleaning things up and abstracting into functions once you're sick of copy-paste. But never be ashamed to play around with your code. Never be afraid of deleting stuff that doesn't work, and don't be afraid to fail, that's all part of the fun.
+</p>
+
+<p>
+I live this as much as possible, too. I stream this exact sort of thing by the way, if you're interested:
+</p>
+
+<p>
+<a href="https://www.twitch.tv/adam_james_tv">https://www.twitch.tv/adam_james_tv</a>
+</p>
+
+<p>
+And have a Youtube Channel where I post nice edited videos:
+</p>
+
+<p>
+<a href="https://www.youtube.com/c/AdamJames-tv">https://www.youtube.com/c/AdamJames-tv</a>
+</p>
+
+<p>
+Ok, that's enough self promotion. Please, have fun messing around with this code!
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka" id="org11c72ca">#!/usr/bin/env bb
+
+(babashka.deps/add-deps
+'{:deps
+ {svg-clj/svg-clj {:git/url "https://github.com/adam-james-v/svg-clj"
+                   :sha "a44a623613b2d8bc59abd54e28215d22aaec2f20"}}})
+
+
+(ns bb.draw
+  (:require [svg-clj.utils :as utils]
+            [svg-clj.elements :as el]
+            [svg-clj.transforms :as tf]
+            [svg-clj.composites :as comp :refer [svg]]
+            [svg-clj.path :as path]
+            [svg-clj.parametric :as p]
+            [svg-clj.layout :as lo]
+            [hiccup.core :refer [html]]
+            [clojure.java.shell :refer [sh]]))
+
+(defn svg! [svg-data fname]
+  (spit fname (html svg-data))
+  (symbol fname))
+
+(defn merge-paths
+  "Merges a list of path elements together, keeping props from last path in the list."
+  [&amp; paths]
+  (let [[_ props] (last paths)
+        cmds (mapcat #(path/path-string-&gt;commands (get-in % [1 :d])) paths)]
+    [:path (assoc props :d (path/cmds-&gt;path-string cmds))]))
+
+(defn flip-y
+  [pts]
+  (mapv #(utils/v* % [1 -1]) pts))
+(defn petal
+  [cpts]
+  (let [beza (apply path/bezier cpts)
+        bezb (apply path/bezier (flip-y cpts))
+        shape (merge-paths beza bezb)
+        ctr (tf/centroid shape)]
+    (-&gt; shape
+        (tf/rotate -90)
+        (tf/translate (utils/v* ctr [-1 -1])))))
+(defn petal-ring
+  [petal r n]
+  (el/g
+   (lo/distribute-on-curve
+    (repeat n petal)
+    (p/circle r))))
+
+(def petal-01
+  (-&gt; (petal [[0 0] [5 -50] [50 -20] [75 0]])
+      (tf/style {:fill "#ff8b94"
+                 :stroke "#ffaaa5"
+                 :stroke-width "4px"
+                 :stroke-linecap "round"})))
+
+(def petal-02
+  (-&gt; (petal [[0 0] [1 -20] [20 -10] [40 0]])
+      (tf/style {:fill "#ffaaa5"
+                 :stroke "none"})))
+
+(def petal-03
+  (-&gt; (merge-paths petal-01 petal-02)
+      (tf/style {:fill "#a8e6cf"})))
+
+(def petal-ring-01 (petal-ring petal-01 120 12))
+(def petal-ring-02 (petal-ring petal-02 120 12))
+
+(def petal-ring-03
+  (-&gt; (petal-ring petal-03 70 6)
+      (tf/rotate (/ 360.0 24))))
+
+(def petal-ring-04
+  (let [petal (-&gt; petal-03 (tf/style {:fill "#cc5963"}))]
+    (-&gt; (petal-ring petal 90 6)
+        (tf/rotate (/ 360.0 24))
+        (tf/rotate (/ 360.0 12)))))
+
+(def petal-ring-05
+  (let [petal (-&gt; petal-02
+                  (tf/rotate 180)
+                  (tf/style {:fill "none"
+                             :stroke "#f4f1d7"
+                             :stroke-width "2px"}))]
+    (-&gt; (petal-ring petal 70 36)
+        (tf/rotate (/ 360.0 24)))))
+
+(def petal-ring-06
+  (let [petal (-&gt; petal-02
+                  (tf/style {:fill "none"
+                             :stroke "#f4f1d7"
+                             :stroke-width "2px"}))]
+    (-&gt; (petal-ring petal 40 20)
+        (tf/rotate (/ 360.0 24)))))
+
+(def blossom (el/g
+              (-&gt; (el/circle 105) (tf/style {:fill "#69b599"}))
+              petal-ring-01
+              petal-ring-02
+              petal-ring-06
+              petal-ring-05
+              petal-ring-04
+              petal-ring-03))
+
+;; activate the following s-expr to see your changes after every eval of this block!
+;; have fun :)
+#_(svg! (svg blossom) "blossom.svg")
+
+</pre>
+</div>
+
+<p>
+<a href="#'bb.draw/blossom">#'bb.draw/blossom</a>
+</p>
+
+<p>
+Putting all of that together, I can generate a blossom image.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka">#!/usr/bin/env bb
+
+(babashka.deps/add-deps
+'{:deps
+ {svg-clj/svg-clj {:git/url "https://github.com/adam-james-v/svg-clj"
+                   :sha "a44a623613b2d8bc59abd54e28215d22aaec2f20"}}})
+
+
+(ns bb.draw
+  (:require [svg-clj.utils :as utils]
+            [svg-clj.elements :as el]
+            [svg-clj.transforms :as tf]
+            [svg-clj.composites :as comp :refer [svg]]
+            [svg-clj.path :as path]
+            [svg-clj.parametric :as p]
+            [svg-clj.layout :as lo]
+            [hiccup.core :refer [html]]
+            [clojure.java.shell :refer [sh]]))
+
+(defn svg! [svg-data fname]
+  (spit fname (html svg-data))
+  (symbol fname))
+
+(defn merge-paths
+  "Merges a list of path elements together, keeping props from last path in the list."
+  [&amp; paths]
+  (let [[_ props] (last paths)
+        cmds (mapcat #(path/path-string-&gt;commands (get-in % [1 :d])) paths)]
+    [:path (assoc props :d (path/cmds-&gt;path-string cmds))]))
+
+(defn flip-y
+  [pts]
+  (mapv #(utils/v* % [1 -1]) pts))
+(defn petal
+  [cpts]
+  (let [beza (apply path/bezier cpts)
+        bezb (apply path/bezier (flip-y cpts))
+        shape (merge-paths beza bezb)
+        ctr (tf/centroid shape)]
+    (-&gt; shape
+        (tf/rotate -90)
+        (tf/translate (utils/v* ctr [-1 -1])))))
+(defn petal-ring
+  [petal r n]
+  (el/g
+   (lo/distribute-on-curve
+    (repeat n petal)
+    (p/circle r))))
+
+(def petal-01
+  (-&gt; (petal [[0 0] [5 -50] [50 -20] [75 0]])
+      (tf/style {:fill "#ff8b94"
+                 :stroke "#ffaaa5"
+                 :stroke-width "4px"
+                 :stroke-linecap "round"})))
+
+(def petal-02
+  (-&gt; (petal [[0 0] [1 -20] [20 -10] [40 0]])
+      (tf/style {:fill "#ffaaa5"
+                 :stroke "none"})))
+
+(def petal-03
+  (-&gt; (merge-paths petal-01 petal-02)
+      (tf/style {:fill "#a8e6cf"})))
+
+(def petal-ring-01 (petal-ring petal-01 120 12))
+(def petal-ring-02 (petal-ring petal-02 120 12))
+
+(def petal-ring-03
+  (-&gt; (petal-ring petal-03 70 6)
+      (tf/rotate (/ 360.0 24))))
+
+(def petal-ring-04
+  (let [petal (-&gt; petal-03 (tf/style {:fill "#cc5963"}))]
+    (-&gt; (petal-ring petal 90 6)
+        (tf/rotate (/ 360.0 24))
+        (tf/rotate (/ 360.0 12)))))
+
+(def petal-ring-05
+  (let [petal (-&gt; petal-02
+                  (tf/rotate 180)
+                  (tf/style {:fill "none"
+                             :stroke "#f4f1d7"
+                             :stroke-width "2px"}))]
+    (-&gt; (petal-ring petal 70 36)
+        (tf/rotate (/ 360.0 24)))))
+
+(def petal-ring-06
+  (let [petal (-&gt; petal-02
+                  (tf/style {:fill "none"
+                             :stroke "#f4f1d7"
+                             :stroke-width "2px"}))]
+    (-&gt; (petal-ring petal 40 20)
+        (tf/rotate (/ 360.0 24)))))
+
+(def blossom (el/g
+              (-&gt; (el/circle 105) (tf/style {:fill "#69b599"}))
+              petal-ring-01
+              petal-ring-02
+              petal-ring-06
+              petal-ring-05
+              petal-ring-04
+              petal-ring-03))
+
+;; activate the following s-expr to see your changes after every eval of this block!
+;; have fun :)
+#_(svg! (svg blossom) "blossom.svg")
+
+(svg! (svg blossom) "02.svg")
+</pre>
+</div>
+
+
+<figure id="orgdfc8e86">
+<object type="image/svg+xml" data="02.svg" class="org-svg">
+Sorry, your browser does not support SVG.</object>
+
+</figure>
+</div>
+</div>
+
+<div id="outline-container-org20c6774" class="outline-3">
+<h3 id="org20c6774">stem</h3>
+<div class="outline-text-3" id="text-org20c6774">
+<p>
+To end things off, it's possible to make a stem for our lovely flower with another bezier curve.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-babashka" id="orgddd6b28">#!/usr/bin/env bb
+
+(babashka.deps/add-deps
+'{:deps
+ {svg-clj/svg-clj {:git/url "https://github.com/adam-james-v/svg-clj"
+                   :sha "a44a623613b2d8bc59abd54e28215d22aaec2f20"}}})
+
+
+(ns bb.draw
+  (:require [svg-clj.utils :as utils]
+            [svg-clj.elements :as el]
+            [svg-clj.transforms :as tf]
+            [svg-clj.composites :as comp :refer [svg]]
+            [svg-clj.path :as path]
+            [svg-clj.parametric :as p]
+            [svg-clj.layout :as lo]
+            [hiccup.core :refer [html]]
+            [clojure.java.shell :refer [sh]]))
+
+(defn svg! [svg-data fname]
+  (spit fname (html svg-data))
+  (symbol fname))
+
+(defn merge-paths
+  "Merges a list of path elements together, keeping props from last path in the list."
+  [&amp; paths]
+  (let [[_ props] (last paths)
+        cmds (mapcat #(path/path-string-&gt;commands (get-in % [1 :d])) paths)]
+    [:path (assoc props :d (path/cmds-&gt;path-string cmds))]))
+
+(defn flip-y
+  [pts]
+  (mapv #(utils/v* % [1 -1]) pts))
+(defn petal
+  [cpts]
+  (let [beza (apply path/bezier cpts)
+        bezb (apply path/bezier (flip-y cpts))
+        shape (merge-paths beza bezb)
+        ctr (tf/centroid shape)]
+    (-&gt; shape
+        (tf/rotate -90)
+        (tf/translate (utils/v* ctr [-1 -1])))))
+(defn petal-ring
+  [petal r n]
+  (el/g
+   (lo/distribute-on-curve
+    (repeat n petal)
+    (p/circle r))))
+
+(def petal-01
+  (-&gt; (petal [[0 0] [5 -50] [50 -20] [75 0]])
+      (tf/style {:fill "#ff8b94"
+                 :stroke "#ffaaa5"
+                 :stroke-width "4px"
+                 :stroke-linecap "round"})))
+
+(def petal-02
+  (-&gt; (petal [[0 0] [1 -20] [20 -10] [40 0]])
+      (tf/style {:fill "#ffaaa5"
+                 :stroke "none"})))
+
+(def petal-03
+  (-&gt; (merge-paths petal-01 petal-02)
+      (tf/style {:fill "#a8e6cf"})))
+
+(def petal-ring-01 (petal-ring petal-01 120 12))
+(def petal-ring-02 (petal-ring petal-02 120 12))
+
+(def petal-ring-03
+  (-&gt; (petal-ring petal-03 70 6)
+      (tf/rotate (/ 360.0 24))))
+
+(def petal-ring-04
+  (let [petal (-&gt; petal-03 (tf/style {:fill "#cc5963"}))]
+    (-&gt; (petal-ring petal 90 6)
+        (tf/rotate (/ 360.0 24))
+        (tf/rotate (/ 360.0 12)))))
+
+(def petal-ring-05
+  (let [petal (-&gt; petal-02
+                  (tf/rotate 180)
+                  (tf/style {:fill "none"
+                             :stroke "#f4f1d7"
+                             :stroke-width "2px"}))]
+    (-&gt; (petal-ring petal 70 36)
+        (tf/rotate (/ 360.0 24)))))
+
+(def petal-ring-06
+  (let [petal (-&gt; petal-02
+                  (tf/style {:fill "none"
+                             :stroke "#f4f1d7"
+                             :stroke-width "2px"}))]
+    (-&gt; (petal-ring petal 40 20)
+        (tf/rotate (/ 360.0 24)))))
+
+(def blossom (el/g
+              (-&gt; (el/circle 105) (tf/style {:fill "#69b599"}))
+              petal-ring-01
+              petal-ring-02
+              petal-ring-06
+              petal-ring-05
+              petal-ring-04
+              petal-ring-03))
+
+;; activate the following s-expr to see your changes after every eval of this block!
+;; have fun :)
+#_(svg! (svg blossom) "blossom.svg")
+
+
+(def stem
+  (-&gt; (path/bezier [0 0] [40 100] [-60 240] [10 400])
+      (tf/style {:fill "none"
+                 :stroke "#49a062"
+                 :stroke-width "24px"})))
+
+(def flower (el/g stem blossom))
+
+(svg! (svg flower) "03.svg")
+</pre>
+</div>
+
+
+<figure id="org50c1740">
+<object type="image/svg+xml" data="03.svg" class="org-svg">
+Sorry, your browser does not support SVG.</object>
+
+</figure>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgb6c4304" class="outline-2">
+<h2 id="orgb6c4304">Final Thoughts</h2>
+<div class="outline-text-2" id="text-orgb6c4304">
+<p>
+Thank you for taking the time to look through and read this project. I hope it was helpful or sparked some ideas in your mind. It's a small project but I think serves as a good example of how nice literate programming with simple tools can be.
+</p>
+
+<p>
+Best of luck and feel free to reach out to me if you'd like.
+</p>
+
+<p>
+<a href="https://twitter.com/RustyVermeer">@RustyVermeer</a>
+<a href="https://github.com/adam-james-v/">Github</a>
+</p>
+
+<p>
+Stay healthy, be well, and have fun!
+</p>
+</div>
+</div>
+</div>
+</body>
+</html>
